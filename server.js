@@ -1,57 +1,57 @@
-const express = require("express");
-const fetch = require("node-fetch");
+import express from "express";
+import fetch from "node-fetch";
+
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 const WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbw_PnWao42hQWcp5ASx5RCy42kaaiLHboKjR7CjBjHKz3pfXxieX4SDzv1m9tqWt-vj_Q/exec";
 
-app.get("/", (req, res) => {
-  res.send(" Email Tracking Server Running");
-});
-
+// Track Opens
 app.get("/open", async (req, res) => {
-  const data = {
-    type: "open",
-    email: req.query.email || "",
-    campaign: req.query.campaign || "",
-    timestamp: new Date().toISOString()
-  };
+  const { email, campaign } = req.query;
 
-  await fetch(WEBHOOK_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
+  if (email && campaign) {
+    await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "open",
+        email,
+        campaign,
+        timestamp: new Date().toISOString()
+      })
+    });
+  }
 
-  const img = Buffer.from(
-    "R0lGODlhAQABAIABAP///wAAACwAAAAAAQABAAACAkQBADs=",
+  // Send 1x1 tracking pixel
+  const pixel = Buffer.from(
+    "R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
     "base64"
   );
-  res.writeHead(200, {
-    "Content-Type": "image/gif",
-    "Content-Length": img.length
-  });
-  res.end(img);
+  res.set("Content-Type", "image/gif");
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.end(pixel, "binary");
 });
 
+// Track Clicks
 app.get("/click", async (req, res) => {
-  const redirectUrl = req.query.url || "https://google.com";
+  const { email, campaign, url } = req.query;
 
-  const data = {
-    type: "click",
-    email: req.query.email || "",
-    campaign: req.query.campaign || "",
-    link: redirectUrl,
-    timestamp: new Date().toISOString()
-  };
+  if (email && campaign) {
+    await fetch(WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        type: "click",
+        email,
+        campaign,
+        link: url,
+        timestamp: new Date().toISOString()
+      })
+    });
+  }
 
-  await fetch(WEBHOOK_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
-  });
-
-  res.redirect(redirectUrl);
+  res.redirect(url || "https://example.com");
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`✅ Tracker running on port ${PORT}`));
